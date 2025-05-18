@@ -31,7 +31,6 @@ class MyApp extends StatelessWidget {
 
 class SplashScreen extends StatefulWidget {
   final String url;
-
   SplashScreen({required this.url});
 
   @override
@@ -69,7 +68,6 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-
     _controller.forward();
 
     Future.delayed(Duration(milliseconds: 3700), () {
@@ -123,7 +121,6 @@ class _SplashScreenState extends State<SplashScreen>
 class WebViewContainer extends StatefulWidget {
   final String url;
   final WebViewController controller;
-
   WebViewContainer({required this.url, required this.controller});
 
   @override
@@ -139,10 +136,8 @@ class _WebViewContainerState extends State<WebViewContainer> {
   @override
   void initState() {
     super.initState();
-
     checkInternetConnection();
 
-    // Listen to connectivity changes, which now return List<ConnectivityResult>
     connectivity.onConnectivityChanged.listen((
       List<ConnectivityResult> results,
     ) {
@@ -164,19 +159,14 @@ class _WebViewContainerState extends State<WebViewContainer> {
         },
         onNavigationRequest: (NavigationRequest request) async {
           Uri uri = Uri.parse(request.url);
-
           final externalHosts = [
             'instagram.com',
-            'www.instagram.com',
             'facebook.com',
-            'www.facebook.com',
             'wa.me',
             'api.whatsapp.com',
             'web.whatsapp.com',
             'twitter.com',
-            'www.twitter.com',
             'youtube.com',
-            'www.youtube.com',
           ];
 
           if (!uri.host.contains(baseHost) &&
@@ -193,7 +183,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
 
           return NavigationDecision.navigate;
         },
-        onWebResourceError: (WebResourceError error) {
+        onWebResourceError: (error) {
           checkInternetConnection();
         },
       ),
@@ -206,14 +196,11 @@ class _WebViewContainerState extends State<WebViewContainer> {
     handleConnectivityChange(result);
   }
 
-  /// Extracts the most relevant connectivity from a list
   ConnectivityResult _extractRelevantConnectivity(
     List<ConnectivityResult> results,
   ) {
     for (var res in results) {
-      if (res != ConnectivityResult.none) {
-        return res;
-      }
+      if (res != ConnectivityResult.none) return res;
     }
     return ConnectivityResult.none;
   }
@@ -221,7 +208,6 @@ class _WebViewContainerState extends State<WebViewContainer> {
   void handleConnectivityChange(ConnectivityResult result) {
     setState(() {
       hasInternet = result != ConnectivityResult.none;
-
       if (hasInternet && !isLoading) {
         widget.controller.reload();
         isLoading = true;
@@ -251,17 +237,26 @@ class _WebViewContainerState extends State<WebViewContainer> {
       return buildNoInternetWidget();
     }
 
-    return Stack(
-      children: [
-        WebViewWidget(controller: widget.controller),
-        if (isLoading)
-          Container(
-            color: Colors.white.withOpacity(1),
-            width: MediaQuery.of(context).size.width,
-            height: MediaQuery.of(context).size.height,
-            child: Center(child: RotatingLogo()),
-          ),
-      ],
+    return WillPopScope(
+      onWillPop: () async {
+        if (await widget.controller.canGoBack()) {
+          widget.controller.goBack();
+          return false;
+        }
+        return true;
+      },
+      child: Stack(
+        children: [
+          WebViewWidget(controller: widget.controller),
+          if (isLoading)
+            Container(
+              color: Colors.white.withOpacity(1),
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height,
+              child: Center(child: RotatingLogo()),
+            ),
+        ],
+      ),
     );
   }
 

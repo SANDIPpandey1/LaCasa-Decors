@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 void main() {
   runApp(MyApp());
@@ -17,6 +18,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Meesaa',
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primaryColor: Colors.blue,
+        colorScheme: ColorScheme.fromSwatch().copyWith(
+          secondary: Colors.blueAccent,
+        ),
+      ),
       home: SplashScreen(url: initialUrl),
     );
   }
@@ -42,7 +49,6 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Initialize WebViewController and load URL in background
     _webViewController =
         WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -57,7 +63,6 @@ class _SplashScreenState extends State<SplashScreen>
           )
           ..loadRequest(Uri.parse(widget.url));
 
-    // Animation setup
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -67,7 +72,6 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate to main screen after splash duration
     Future.delayed(Duration(milliseconds: 3700), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -129,12 +133,22 @@ class WebViewContainer extends StatefulWidget {
 class _WebViewContainerState extends State<WebViewContainer> {
   final String baseHost = "meesaa.com";
   bool isLoading = false;
+  bool hasInternet = true;
+  final connectivity = Connectivity();
 
   @override
   void initState() {
     super.initState();
 
-    // Setup navigation handler with loading indicator
+    //internet connection check
+    checkInternetConnection();
+
+    connectivity.onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
+      handleConnectivityChange(results);
+    });
+
     widget.controller.setNavigationDelegate(
       NavigationDelegate(
         onPageStarted: (url) {
@@ -150,7 +164,6 @@ class _WebViewContainerState extends State<WebViewContainer> {
         onNavigationRequest: (NavigationRequest request) async {
           Uri uri = Uri.parse(request.url);
 
-          // If it's not meesaa.com, launch externally
           if (!uri.host.contains(baseHost)) {
             if (await canLaunchUrl(uri)) {
               launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -158,20 +171,57 @@ class _WebViewContainerState extends State<WebViewContainer> {
             }
           }
 
-          // Show loading indicator before navigation
           setState(() {
             isLoading = true;
           });
 
-          // Otherwise, allow inside app
           return NavigationDecision.navigate;
+        },
+        onWebResourceError: (WebResourceError error) {
+          checkInternetConnection();
         },
       ),
     );
   }
 
+  Future<void> checkInternetConnection() async {
+    final results = await connectivity.checkConnectivity();
+    handleConnectivityChange(results);
+  }
+
+  void handleConnectivityChange(List<ConnectivityResult> results) {
+    setState(() {
+      hasInternet = results.any((result) => result != ConnectivityResult.none);
+
+      if (hasInternet && !isLoading) {
+        widget.controller.reload();
+        isLoading = true;
+      }
+    });
+  }
+
+  void retryConnection() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    await checkInternetConnection();
+
+    if (hasInternet) {
+      widget.controller.reload();
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (!hasInternet) {
+      return buildNoInternetWidget();
+    }
+
     return Stack(
       children: [
         WebViewWidget(controller: widget.controller),
@@ -185,9 +235,60 @@ class _WebViewContainerState extends State<WebViewContainer> {
       ],
     );
   }
+
+  Widget buildNoInternetWidget() {
+    return Container(
+      color: Colors.white,
+      width: MediaQuery.of(context).size.width,
+      height: MediaQuery.of(context).size.height,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset('assets/icon/fab.png', width: 120, height: 120),
+          SizedBox(height: 30),
+          Text(
+            'No Internet Connection',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          SizedBox(height: 15),
+          Text(
+            'Please connect to the internet to access the app',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.black54),
+          ),
+          SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: retryConnection,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.refresh, color: Colors.white),
+                SizedBox(width: 8),
+                Text(
+                  'Retry',
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// New class for the rotating splash image
+// splash scren
 class RotatingLogo extends StatefulWidget {
   @override
   _RotatingLogoState createState() => _RotatingLogoState();

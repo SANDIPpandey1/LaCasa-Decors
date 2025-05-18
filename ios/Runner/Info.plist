@@ -45,5 +45,32 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- For webview_flutter -->
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+
+<!-- For url_launcher -->
+<key>LSApplicationQueriesSchemes</key>
+<array>
+    <string>https</string>
+    <string>http</string>
+    <string>tel</string>
+    <string>mailto</string>
+</array>
+
+<!-- For onesignal_flutter push notifications -->
+<key>NSUserNotificationUsageDescription</key>
+<string>We'd like to send you notifications to keep you updated.</string>
+
+<key>UIBackgroundModes</key>
+<array>
+    <string>remote-notification</string>
+</array>
 </dict>
 </plist>
+
+

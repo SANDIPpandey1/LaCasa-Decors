@@ -11,7 +11,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  final String initialUrl = "https://meesaa.com/";
+  final String initialUrl = "https://lacasadecors.com/";
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +113,7 @@ class _SplashScreenState extends State<SplashScreen>
       body: Center(
         child: ScaleTransition(
           scale: _animation,
-          child: Image.asset('assets/icon/fab.png', width: 150, height: 150),
+          child: Image.asset('assets/icon/la.png', width: 150, height: 150),
         ),
       ),
     );
@@ -131,22 +131,23 @@ class WebViewContainer extends StatefulWidget {
 }
 
 class _WebViewContainerState extends State<WebViewContainer> {
-  final String baseHost = "meesaa.com";
+  final String baseHost = "lacasadecors.com";
   bool isLoading = false;
   bool hasInternet = true;
-  final connectivity = Connectivity();
+  final Connectivity connectivity = Connectivity();
 
   @override
   void initState() {
     super.initState();
 
-    //internet connection check
     checkInternetConnection();
 
+    // Listen to connectivity changes, which now return List<ConnectivityResult>
     connectivity.onConnectivityChanged.listen((
       List<ConnectivityResult> results,
     ) {
-      handleConnectivityChange(results);
+      ConnectivityResult result = _extractRelevantConnectivity(results);
+      handleConnectivityChange(result);
     });
 
     widget.controller.setNavigationDelegate(
@@ -164,9 +165,24 @@ class _WebViewContainerState extends State<WebViewContainer> {
         onNavigationRequest: (NavigationRequest request) async {
           Uri uri = Uri.parse(request.url);
 
-          if (!uri.host.contains(baseHost)) {
+          final externalHosts = [
+            'instagram.com',
+            'www.instagram.com',
+            'facebook.com',
+            'www.facebook.com',
+            'wa.me',
+            'api.whatsapp.com',
+            'web.whatsapp.com',
+            'twitter.com',
+            'www.twitter.com',
+            'youtube.com',
+            'www.youtube.com',
+          ];
+
+          if (!uri.host.contains(baseHost) &&
+              externalHosts.any((host) => uri.host.contains(host))) {
             if (await canLaunchUrl(uri)) {
-              launchUrl(uri, mode: LaunchMode.externalApplication);
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
               return NavigationDecision.prevent;
             }
           }
@@ -185,13 +201,26 @@ class _WebViewContainerState extends State<WebViewContainer> {
   }
 
   Future<void> checkInternetConnection() async {
-    final results = await connectivity.checkConnectivity();
-    handleConnectivityChange(results);
+    List<ConnectivityResult> results = await connectivity.checkConnectivity();
+    ConnectivityResult result = _extractRelevantConnectivity(results);
+    handleConnectivityChange(result);
   }
 
-  void handleConnectivityChange(List<ConnectivityResult> results) {
+  /// Extracts the most relevant connectivity from a list
+  ConnectivityResult _extractRelevantConnectivity(
+    List<ConnectivityResult> results,
+  ) {
+    for (var res in results) {
+      if (res != ConnectivityResult.none) {
+        return res;
+      }
+    }
+    return ConnectivityResult.none;
+  }
+
+  void handleConnectivityChange(ConnectivityResult result) {
     setState(() {
-      hasInternet = results.any((result) => result != ConnectivityResult.none);
+      hasInternet = result != ConnectivityResult.none;
 
       if (hasInternet && !isLoading) {
         widget.controller.reload();
@@ -244,7 +273,7 @@ class _WebViewContainerState extends State<WebViewContainer> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset('assets/icon/fab.png', width: 120, height: 120),
+          Image.asset('assets/icon/la.png', width: 120, height: 120),
           SizedBox(height: 30),
           Text(
             'No Internet Connection',
@@ -288,7 +317,6 @@ class _WebViewContainerState extends State<WebViewContainer> {
   }
 }
 
-// splash scren
 class RotatingLogo extends StatefulWidget {
   @override
   _RotatingLogoState createState() => _RotatingLogoState();
@@ -323,7 +351,7 @@ class _RotatingLogoState extends State<RotatingLogo>
           child: child,
         );
       },
-      child: Image.asset('assets/icon/fab.png', width: 100, height: 100),
+      child: Image.asset('assets/icon/la.png', width: 100, height: 100),
     );
   }
 }
